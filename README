@@ -1,7 +1,15 @@
 Simple Bugzilla Client
 
 
+Provides basic functionality to communicate with a remote Bugzilla instance over XML-RPC.
 
+  * Get bug by Id
+  * Search for bug by status, resolution, summary and/or whiteboard
+
+Now includes an example which use Smarty as templating engine
+
+
+--
 Gerard Braad — 吉拉德
 F/OSS & IT Consultant in Beijing
 http://gbraad.nl  gpg: 0x592CFE75

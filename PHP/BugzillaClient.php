@@ -35,26 +35,56 @@ class BugzillaClient
 	$response = $this->rpcClient->call('User.logout', array());  // Do logout
     }
 
-    public function Get($id)
+    public function Get($bugIds)
+    {
+	// Get request (XMLRPC) and process results and include description
+	return $this->processGet($this->rpcClient->call('Bug.get', array(array('ids' => $bugIds))), true);
+    }
+
+    public function Search($product, $status, $resolution, $summary, $whiteboard)
+    {
+	// Search request (XMLRPC)
+	$response = $this->rpcClient->call('Bug.search', array(array(
+	    //'product'    => $product,		// Does not seem to work for me
+	    'resolution' => $resolution,
+	    'status'     => $status,
+	    'summary'    => $summary,
+	    'whiteboard' => $whiteboard
+	)));
+
+	// Process results and do not include bug description
+	return $this->processGet($response, false);
+    }
+
+    private function getDescription($bugId)
+    {
+	// Comments request (XMLRPC)
+	$response = $this->rpcClient->call('Bug.comments', array(array('ids' => $bugId)));
+	// Extract the first comment from the bug and store as description
+	return $response['bugs'][$bugId]['comments'][0]['text'];
+    }
+
+    private function processGet($input, $includeDescription)
     {
 	$returnValue = array();
-    
-	// Get request (XMLRPC)
-	$response = $this->rpcClient->call('Bug.get', array(array('ids' => $id)));
-	$index = 0; // Only retrieving one bug, so don't bother with index now
 
-	$returnValue['id'] = $id;
-	// Construct a remote URL
-	$returnValue['url'] = $this->baseUrl . "/show_bug.cgi?id=" . $id;
-	// Collect some basic information about the bug
-	$returnValue['summary'] = $response['bugs'][$index]['summary'];
-	$returnValue['status'] = $response['bugs'][$index]['status'];
-	$returnValue['resolution'] = $response['bugs'][$index]['resolution'];
+	foreach($input['bugs'] as $bug)
+	{
+	    $bugId = $bug['id'];
 
-	// Comments request (XMLRPC)
-	$response = $this->rpcClient->call('Bug.comments', array(array('ids' => $id)));
-	// Extract the first comment from the bug and store as description
-	$returnValue['description'] = $response['bugs'][$id]['comments'][0]['text'];
+	    // Construct a remote URL
+	    $returnValue[$bugId]['url']         = $this->baseUrl . "/show_bug.cgi?id=" . $bugId;
+	    // Collect some basic information about the bug
+	    $returnValue[$bugId]['id']          = $bugId;
+	    $returnValue[$bugId]['summary']     = $bug['summary'];
+	    $returnValue[$bugId]['status']      = $bug['status'];
+	    $returnValue[$bugId]['resolution']  = $bug['resolution'];
+	    $returnValue[$bugId]['assigned_to'] = $bug['assigned_to'];
+
+	    // Include first comment as description
+	    if($includeDescription)
+		$returnValue[$bugId]['description'] = $this->getDescription($bugId);
+	}
 
 	return $returnValue;
     }
